@@ -25,49 +25,54 @@ app.get("/api/users", (req, res) => {
     return res.json(users);
 });
 
-app.get("/api/user/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const user = users.find((user) => user.id === id);
-    return res.json(user);
-});
-
 app.post("/api/users", (req, res) => {
     body = req.body;
-    body.id = users.length + 1;
+    const lastUser = users.slice(-1)[0];
+    body.id = lastUser ? lastUser.id + 1 : 1;
     users.push(body);
     fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (err, data) => {
-        return res.json({ id: body.id });
+        return res.status(201).json({ id: body.id });
     });
 });
 
-app.delete("/api/user/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const filteredUsers = users.filter((user) => user.id !== id);
-    users.length = 0;
-    users.push(...filteredUsers);
-    fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (err, data) => {
-        return res.json({ status: "user removed" });
+app.route("/api/user/:id")
+    .get((req, res) => {
+        const id = Number(req.params.id);
+        const user = users.find((user) => user.id === id);
+        if (!user) return res.status(404).json({ error: "user not found" });
+        return res.json(user);
+    })
+    .delete((req, res) => {
+        const id = Number(req.params.id);
+        const filteredUsers = users.filter((user) => user.id !== id);
+        users.length = 0;
+        users.push(...filteredUsers);
+        fs.writeFile("./MOCK_DATA.json", JSON.stringify(users), (err, data) => {
+            return res.json({ status: "user removed" });
+        });
+    })
+    .patch((req, res) => {
+        const id = Number(req.params.id);
+        const body = req.body;
+        const updatedUsers = users.map((user) => {
+            if (user.id === id) {
+                user.first_name = body.first_name;
+                user.last_name = body.last_name;
+                user.email = body.email;
+                user.gender = body.gender;
+                user.job = body.job;
+                console.log(user);
+            }
+            return user;
+        });
+        fs.writeFile(
+            "./MOCK_DATA.json",
+            JSON.stringify(updatedUsers),
+            (err, data) => {
+                return res.json({ status: "user updated" });
+            }
+        );
     });
-});
-
-app.patch("/api/user/:id", (req, res) => {
-    const id = Number(req.params.id);
-    const body = req.body;
-    const updatedUsers = users.map((user) => {
-        if (user.id === id) {
-            user.first_name = body.first_name;
-            user.last_name = body.last_name;
-            user.email = body.email;
-            user.gender = body.gender;
-            user.job = body.job;
-            console.log(user);
-        }
-        return user;
-    });
-    fs.writeFile("./MOCK_DATA.json", JSON.stringify(updatedUsers), (err, data) => {
-        return res.json({ status: "user updated" });
-    });
-});
 
 const PORT = 8000;
 app.listen(PORT, () => {
